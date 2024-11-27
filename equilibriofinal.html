@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Equilibrio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .tower-container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 40px);
+            gap: 0;
+            max-width: 120px;
+            margin: 0 auto;
+        }
+
+        .button-grid button {
+            width: 40px;
+            height: 40px;
+            border: 2px solid black;
+            box-shadow: 0 0 0 3px #D2B48C;
+            cursor: pointer;
+            display: block;
+        }
+
+        .button-grid .solid-row {
+            grid-column: span 3;
+            height: 40px;
+            background-color: #D2B48C;
+            border: 2px solid black;
+            box-shadow: 0 0 0 3px #D2B48C;
+        }
+
+        .game-container {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .game-container header {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px;
+            font-size: 1.5em;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .question-container,
+        .scoreboard {
+            margin: 20px;
+        }
+
+        .scoreboard {
+            font-size: 1.2em;
+        }
+
+        .current-player {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tower-container">
+        <div>
+            
+            <div class="button-grid" id="tower1"></div>
+        </div>
+        <div>
+            
+            <div class="button-grid" id="tower2"></div>
+        </div>
+    </div>
+    <div class="game-container">
+        <header>Juego de Equilibrio</header>
+        <div class="current-player" id="currentPlayer">Turno del Jugador 1</div>
+        <div class="question-container" id="questionContainer">
+            <p><strong>Pregunta:</strong> Lanza el dado para comenzar.</p>
+        </div>
+        <button id="rollDiceButton">Lanzar Dado</button>
+        <div class="scoreboard" id="playerScores">
+            <p>Jugador 1: <span id="player1Coins">0</span> monedas</p>
+            <p>Jugador 2: <span id="player2Coins">0</span> monedas</p>
+            <p>Jugador 3: <span id="player3Coins">0</span> monedas</p>
+            <p>Jugador 4: <span id="player4Coins">0</span> monedas</p>
+        </div>
+    </div>
+
+    <script>
+        const totalRows = 18;
+        const cols = 3;
+        const totalButtons = totalRows / 2 * cols;
+        let removedButtons = 0;
+        const colors = {
+            "#FFD700": "amarillo",
+            "#1E90FF": "azul",
+            "#32CD32": "verde",
+            "#FF69B4": "rosado",
+            "#9370DB": "morado",
+            "#000000": "negro"
+        };
+        const playerCoins = [0, 0, 0, 0];
+        let currentPlayer = 1;
+
+        const tower1 = document.getElementById("tower1");
+        const tower2 = document.getElementById("tower2");
+        const rollDiceButton = document.getElementById("rollDiceButton");
+        const currentPlayerDisplay = document.getElementById("currentPlayer");
+        const questionContainer = document.getElementById("questionContainer");
+        const playerScores = [
+            document.getElementById("player1Coins"),
+            document.getElementById("player2Coins"),
+            document.getElementById("player3Coins"),
+            document.getElementById("player4Coins"),
+        ];
+
+        let preguntas;
+
+        // Cargar preguntas desde preguntas.json
+        async function loadPreguntas() {
+            const response = await fetch("preguntas.json");
+            preguntas = await response.json();
+        }
+
+        function resetGame() {
+            tower1.innerHTML = '';
+            tower2.innerHTML = '';
+            removedButtons = 0;
+            playerCoins.fill(0);
+            playerScores.forEach((score, index) => {
+                score.textContent = playerCoins[index];
+            });
+            createTower("tower1", true);
+            createTower("tower2", false);
+        }
+
+        function getRandomPregunta(color) {
+            if (preguntas && preguntas[color]) {
+                const preguntasColor = preguntas[color];
+                const randomIndex = Math.floor(Math.random() * preguntasColor.length);
+                return preguntasColor[randomIndex];
+            }
+            return "No hay preguntas disponibles para este color.";
+        }
+
+        rollDiceButton.addEventListener("click", () => {
+            const randomColorHex = Object.keys(colors)[Math.floor(Math.random() * Object.keys(colors).length)];
+            const randomColor = colors[randomColorHex];
+            const coinsEarned = randomColor === "negro" ? 2 : 1;
+            playerCoins[currentPlayer - 1] += coinsEarned;
+            playerScores[currentPlayer - 1].textContent = playerCoins[currentPlayer - 1];
+
+            const pregunta = getRandomPregunta(randomColor);
+            questionContainer.innerHTML = `
+                <p><strong>Pregunta (${randomColor.toUpperCase()}):</strong> ${pregunta}</p>
+            `;
+            currentPlayer = (currentPlayer % 4) + 1;
+            setTimeout(() => {
+                alert(`¡Es turno del Jugador ${currentPlayer}!`);
+                currentPlayerDisplay.textContent = `Turno del Jugador ${currentPlayer}`;
+            }, 100);
+        });
+
+        async function initGame() {
+            await loadPreguntas();
+            createTower("tower1", true); // La Torre 1 crea botones en filas pares
+            createTower("tower2", false); // La Torre 2 crea botones en filas impares
+        }
+
+        initGame();
+
+        function createTower(gridId, buttonsInEvenRows) {
+            const tower = document.getElementById(gridId);
+            for (let i = 0; i < totalRows; i++) {
+                if ((i % 2 === 0 && buttonsInEvenRows) || (i % 2 === 1 && !buttonsInEvenRows)) {
+                    // Crear fila de botones
+                    const rowState = { left: false, center: false, right: false };
+                    for (let j = 0; j < cols; j++) {
+                        const button = document.createElement("button");
+                        button.style.backgroundColor = Object.keys(colors)[Math.floor(Math.random() * Object.keys(colors).length)];
+                        button.addEventListener("click", () => {
+                            if (j === 1 && (rowState.left || rowState.right)) {
+                                alert("¡Juego terminado! Se presionó el botón del centro después de los extremos.");
+                                endGame();
+                            } else if ((j === 0 || j === 2) && rowState.center) {
+                                alert("¡Juego terminado! Se presionó un botón del extremo después del centro.");
+                                endGame();
+                            } else {
+                                button.style.visibility = "hidden";
+                                removedButtons++;
+                                if (j === 0) rowState.left = true;
+                                if (j === 1) rowState.center = true;
+                                if (j === 2) rowState.right = true;
+
+                                const endProbability = (removedButtons / totalButtons) * 100;
+                                if (Math.random() * 100 < endProbability) {
+                                    alert(`¡Juego terminado! Probabilidad alcanzada: ${endProbability.toFixed(1)}%.`);
+                                    endGame();
+                                }
+                            }
+                        });
+                        tower.appendChild(button);
+                    }
+                } else {
+                    // Crear fila sólida
+                    const solidRow = document.createElement("div");
+                    solidRow.classList.add("solid-row");
+                    tower.appendChild(solidRow);
+                }
+            }
+        }
+
+        function endGame() {
+            const maxCoins = Math.max(...playerCoins);
+            const winners = playerCoins
+                .map((coins, index) => (coins === maxCoins ? `Jugador ${index + 1}` : null))
+                .filter(Boolean);
+            alert(`¡Juego terminado! Ganador${winners.length > 1 ? 'es' : ''}: ${winners.join(', ')} con ${maxCoins} monedas.`);
+            resetGame();
+        }
+    </script>
+
+</body>
+
+</html>
